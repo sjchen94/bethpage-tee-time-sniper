@@ -1,0 +1,14 @@
+{
+  "name": "bethpage-tee-time-sniper",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Tee-time sniper for the 7:00 PM Bethpage release, with a mock ForeUp site and Playwright e2e proof",
+  "scripts": {
+    "mock": "node mock/mock-server.js",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
