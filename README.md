@@ -3,7 +3,7 @@
 Wins a Bethpage State Park tee time the instant the **7:00 PM** release hits.
 A ground-up rewrite of a 2025 vibe-coded console script — re-architected by
 **Claude Fable 5** with a fleet of research and adversarial-review subagents,
-and **proven by a Playwright e2e suite (16/16)** against a faithful mock of
+and **proven by a Playwright e2e suite (18/18)** against a faithful mock of
 the ForeUp booking flow.
 
 > **The honest headline.** Since **Oct 9, 2025** Bethpage requires a
@@ -17,13 +17,58 @@ the ForeUp booking flow.
 
 ---
 
+## 🚀 Run it (about 60 seconds)
+
+**Step 1 — Copy the bot to your clipboard.** One command (always grabs the
+latest version):
+
+```bash
+curl -sL https://raw.githubusercontent.com/jardysuntan/bethpage-tee-time-sniper/main/bethpage-sniper.user.js | pbcopy
+```
+
+> Have the repo cloned locally? Use `pbcopy < bethpage-sniper.user.js` instead.
+> No Terminal? Open [the raw file](https://raw.githubusercontent.com/jardysuntan/bethpage-tee-time-sniper/main/bethpage-sniper.user.js), select all (**⌘A**), copy (**⌘C**).
+
+**Step 2 — Paste it into the page.** On the Bethpage booking page, open the
+Chrome console with **⌥⌘J** (Option-Command-J), click into it, paste (**⌘V**),
+and press **Enter**.
+
+> If Chrome blocks the paste, type **`allow pasting`**, press Enter, then paste again.
+
+A dark **TTB** control bar appears at the top of the page, with a built-in
+4-step guide printed right on it.
+
+**Step 3 — Use it. This is the entire job:**
+
+1. Set your **`from`** / **`to`** time window and **`players`**. Leave
+   **`fire@server`** at `18:59:59.0`. Tick **`turbo`** only if you're going for
+   Black. **Make sure `dry run` is UNCHECKED.**
+2. Press **ARM**. It fires at 7:00 automatically.
+3. Keep the tab in front and **wait** — hands off the keyboard.
+4. When the **purple banner** appears: **check your email, type the 6-digit
+   code into the booking window, and click "Book Time."**
+
+> **You only do two things live:** press **ARM** after pasting, and **type the
+> emailed code** when the purple banner pops. Everything in between — refreshing
+> at 7:00, grabbing the first open slot, filling the booking window — is
+> automatic.
+
+👉 **Want it minute-by-minute for game day? See [GAMEDAY.md](GAMEDAY.md).**
+
+> **Rehearse for free first:** start the mock (`npm install && npm run mock`),
+> open http://127.0.0.1:4399, paste the bot, and click **TEST (dry)** to watch
+> the whole flow without booking anything. See [Running the tests](#running-the-tests).
+
+---
+
 ## What's in here
 
 | File | What it is |
 |---|---|
 | `bethpage-sniper.user.js` | **The bot.** Paste into the DevTools console on the booking page (or install in Tampermonkey). |
+| [`GAMEDAY.md`](GAMEDAY.md) | **The 7:00 PM runbook** — the minute-by-minute checklist for the real run. |
 | `mock/mock-server.js` | A mock ForeUp site: empty times before a release timestamp, tiles after, stateful/expiring holds, snipe races, the booking modal, a skewable server clock, and the CAPTCHA / emailed-code 2FA gates. |
-| `tests/sniper.spec.js` | Playwright e2e proof — 16 scenarios, all passing. |
+| `tests/sniper.spec.js` | Playwright e2e proof — 18 scenarios, all passing. |
 | `playwright.config.js`, `package.json` | Test harness wiring. |
 
 ---
@@ -217,7 +262,7 @@ findings drove real fixes:
 ### 5. Prove it
 Every fix is locked in by an e2e test that drives the actual `.user.js` in a
 real browser against the mock and asserts on the mock's server-side booking
-ledger. **16/16 green.**
+ledger. **18/18 green.**
 
 > Built with [Claude Code](https://claude.com/claude-code) (Fable 5) using
 > background Workflow orchestration — parallel research and adversarial-review
