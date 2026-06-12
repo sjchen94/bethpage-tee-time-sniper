@@ -219,6 +219,19 @@ test('respects the earliest/latest window', async ({ page, request }) => {
   expect(st.booked[0].label).toBe('3:00pm');
 });
 
+test('the panel collapses to the header and expands back, controls still usable', async ({ page, request }) => {
+  await configure(request, { releaseInMs: -1000 });
+  await inject(page);
+  await expect(page.locator('#ttb-body')).toBeVisible();
+  await page.click('#ttb-collapse');
+  await expect(page.locator('#ttb-body')).toBeHidden();   // controls tucked away
+  await expect(page.locator('#ttb-status')).toBeVisible(); // status stays visible
+  await page.click('#ttb-title');                          // title toggles too
+  await expect(page.locator('#ttb-body')).toBeVisible();
+  await page.fill('#ttb-fire', '07:00:00.0');              // controls work after expand
+  expect(await page.inputValue('#ttb-fire')).toBe('07:00:00.0');
+});
+
 test('dry run walks the whole flow but never books', async ({ page, request }) => {
   await configure(request, { releaseInMs: 1500 });
   await inject(page);

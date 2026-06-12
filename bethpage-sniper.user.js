@@ -979,7 +979,19 @@
     const stopBtn = button('ttb-stop', 'STOP', '#a33');
     const status = el('span', { fontWeight: 'bold', color: '#999' }, { id: 'ttb-status', textContent: 'idle' });
 
-    row.appendChild(el('span', { fontWeight: 'bold', color: '#5fff8f' }, { textContent: 'TTB v2.1' }));
+    const countdown = el('span', { minWidth: '150px', fontWeight: 'bold' }, { id: 'ttb-countdown', textContent: '' });
+
+    // Header line - ALWAYS visible (even collapsed): toggle, title, status, countdown.
+    const collapseBtn = button('ttb-collapse', '▾', 'transparent');
+    collapseBtn.style.color = '#5fff8f';
+    collapseBtn.style.border = '1px solid #2a6fdb';
+    collapseBtn.style.padding = '0 8px';
+    collapseBtn.title = 'collapse / expand (also click the title)';
+    const title = el('span', { fontWeight: 'bold', color: '#5fff8f', cursor: 'pointer' }, { id: 'ttb-title', title: 'collapse / expand', textContent: 'TTB v2.1' });
+    const header = el('div', { display: 'flex', alignItems: 'center', gap: '8px' });
+    header.appendChild(collapseBtn); header.appendChild(title); header.appendChild(status); header.appendChild(countdown);
+
+    // Controls.
     row.appendChild(field('fire@server', fire));
     row.appendChild(field('from', earliest));
     row.appendChild(field('to', latest));
@@ -987,18 +999,17 @@
     row.appendChild(field('players', players));
     row.appendChild(field('dry run', dry));
     row.appendChild(field('turbo', turbo));
-    row.appendChild(syncBtn); row.appendChild(testBtn); row.appendChild(armBtn); row.appendChild(stopBtn); row.appendChild(status);
+    row.appendChild(syncBtn); row.appendChild(testBtn); row.appendChild(armBtn); row.appendChild(stopBtn);
 
-    const row2 = el('div', { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' });
+    const row2 = el('div', { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' });
     const barWrap = el('div', { flex: '1', height: '8px', background: '#0c0d10', borderRadius: '4px', overflow: 'hidden' });
     const bar = el('div', { height: '100%', width: '0%', background: 'linear-gradient(90deg,#002efc,#ff0000)', transition: 'width .1s linear' }, { id: 'ttb-bar' });
     barWrap.appendChild(bar);
-    const countdown = el('span', { minWidth: '170px', fontWeight: 'bold' }, { id: 'ttb-countdown', textContent: '' });
     const offset = el('span', { color: '#8ab4ff' }, { id: 'ttb-offset', textContent: 'clock: local (not synced)' });
-    row2.appendChild(barWrap); row2.appendChild(countdown); row2.appendChild(offset);
+    row2.appendChild(barWrap); row2.appendChild(offset);
 
     const help = el('div', {
-      marginTop: '4px', padding: '5px 9px', background: '#1f2733', border: '1px solid #2a6fdb',
+      marginTop: '6px', padding: '5px 9px', background: '#1f2733', border: '1px solid #2a6fdb',
       borderRadius: '4px', color: '#cfe3ff', fontSize: '11px', lineHeight: '1.55',
     });
     help.innerHTML =
@@ -1008,10 +1019,24 @@
       '<b>3.</b> Keep this tab in front and <b>wait</b>.<br>' +
       '<b>4.</b> When the <b style="color:#c77dff">purple banner</b> appears &rarr; check your email, type the <b>6-digit code</b>, click <b>&ldquo;Book Time&rdquo;</b>.';
 
-    const logBox = el('div', { marginTop: '4px', height: '104px', overflowY: 'auto', background: '#0c0d10', border: '1px solid #333', borderRadius: '4px', padding: '4px 6px', whiteSpace: 'pre-wrap' }, { id: 'ttb-log' });
+    const logBox = el('div', { marginTop: '6px', height: '104px', overflowY: 'auto', background: '#0c0d10', border: '1px solid #333', borderRadius: '4px', padding: '4px 6px', whiteSpace: 'pre-wrap' }, { id: 'ttb-log' });
 
-    root.appendChild(row); root.appendChild(row2); root.appendChild(help); root.appendChild(logBox);
+    // Everything below the header collapses.
+    const bodyWrap = el('div', { marginTop: '6px' }, { id: 'ttb-body' });
+    bodyWrap.appendChild(row); bodyWrap.appendChild(row2); bodyWrap.appendChild(help); bodyWrap.appendChild(logBox);
+
+    root.appendChild(header); root.appendChild(bodyWrap);
     document.body.appendChild(root);
+
+    function toggleCollapse() {
+      const collapsing = bodyWrap.style.display !== 'none';
+      bodyWrap.style.display = collapsing ? 'none' : 'block';
+      collapseBtn.textContent = collapsing ? '▸' : '▾';
+      root.style.borderBottomColor = collapsing ? '#555' : '#2a6fdb';
+      title.textContent = collapsing ? 'TTB v2.1 (collapsed)' : 'TTB v2.1';
+    }
+    collapseBtn.addEventListener('click', toggleCollapse);
+    title.addEventListener('click', toggleCollapse);
 
     syncBtn.addEventListener('click', function () { syncClock(); });
     testBtn.addEventListener('click', testNow);
