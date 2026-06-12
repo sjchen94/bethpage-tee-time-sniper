@@ -40,6 +40,7 @@ function reset(overrides) {
     requireCode: false,    // modal shows the emailed-code field on open (real Bethpage flow)
     holdExclusive: true,   // reject a second hold while one is live
     holdExpiryMs: 0,       // 0 = never expires; else hold dies this long after placed
+    holdDelayMs: 0,        // delay ONLY the hold response (simulates a laggy 7PM hold round-trip)
     labelFormat: 'compact', // 'compact' "6:24pm" | 'spaced' "6:24 PM"
     responseDelayMs: 0,
   }, overrides || {});
@@ -277,6 +278,7 @@ const server = http.createServer(async (req, res) => {
   if (u.pathname === '/api/booking/hold' && req.method === 'POST') {
     counters.hold++;
     const body = await readJson(req);
+    if (cfg.holdDelayMs) await sleep(cfg.holdDelayMs); // laggy hold round-trip
     const labels = allTimes().map((t) => t.label);
     const idx = labels.indexOf(body.label);
     if (idx === -1 || idx < cfg.snipeFirst || booked.some((b) => b.label === body.label)) {

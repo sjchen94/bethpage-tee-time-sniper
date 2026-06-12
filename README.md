@@ -3,7 +3,7 @@
 Wins a Bethpage State Park tee time the instant the **7:00 PM** release hits.
 A ground-up rewrite of a 2025 vibe-coded console script — re-architected by
 **Claude Fable 5** with a fleet of research and adversarial-review subagents,
-and **proven by a Playwright e2e suite (19/19)** against a faithful mock of
+and **proven by a Playwright e2e suite (20/20)** against a faithful mock of
 the ForeUp booking flow.
 
 > **The honest headline.** Since **Oct 9, 2025** Bethpage requires a
@@ -70,7 +70,7 @@ A dark **TTB** control bar appears at the top of the page, with a built-in
 | `bethpage-sniper.user.js` | **The bot.** Paste into the DevTools console on the booking page (or install in Tampermonkey). |
 | [`GAMEDAY.md`](GAMEDAY.md) | **The 7:00 PM runbook** — the minute-by-minute checklist for the real run. |
 | `mock/mock-server.js` | A mock ForeUp site: empty times before a release timestamp, tiles after, stateful/expiring holds, snipe races, the booking modal, a skewable server clock, and the CAPTCHA / emailed-code 2FA gates. |
-| `tests/sniper.spec.js` | Playwright e2e proof — 19 scenarios, all passing. |
+| `tests/sniper.spec.js` | Playwright e2e proof — 20 scenarios, all passing. |
 | `playwright.config.js`, `package.json` | Test harness wiring. |
 
 ---
@@ -177,7 +177,11 @@ quieter courses the default is plenty.
   already-polling when 7:00 flips, without turbo spraying ~100 empty
   pre-release requests. Firing much earlier just adds bot-like request volume,
   not speed; the search-until-found loop means firing a hair late is safe too.
-- `searchEveryMs` (350) · `modalWaitMs` · `outcomeWaitMs` · `maxSearchMs`
+- `searchEveryMs` (350) · `modalWaitMs` (10000) · `outcomeWaitMs` (25000) ·
+  `maxSearchMs` (180000) — the modal/outcome waits are deliberately generous so
+  a laggy 7:00 release (slow hold round-trip) can't make the bot abandon a slot
+  it actually won; raising them can't cause a missed release (it only idle-waits
+  on your own submitted click).
 - `earliest` / `latest` / `idealTime` (default `12:00pm` — grabs the open slot
   closest to it within the window; blank = earliest) / `desiredPlayers` /
   `minPlayers` / `preference`
@@ -194,7 +198,7 @@ npm test           # 16 e2e scenarios against the mock ForeUp site
 npm run mock       # poke the mock yourself at http://127.0.0.1:4399
 ```
 
-**Scenarios covered (19):** release-after-fire (empty searches first, books
+**Scenarios covered (20):** release-after-fire (empty searches first, books
 <2.5 s after release) · benign "error" text in the modal does **not** abort a
 good booking · **Bethpage Black realism: hold lands inside a 500 ms window** ·
 **API turbo detection** · snipe fallback · Book-failure with proper hold release
@@ -268,7 +272,7 @@ findings drove real fixes:
 ### 5. Prove it
 Every fix is locked in by an e2e test that drives the actual `.user.js` in a
 real browser against the mock and asserts on the mock's server-side booking
-ledger. **19/19 green.**
+ledger. **20/20 green.**
 
 > Built with [Claude Code](https://claude.com/claude-code) (Fable 5) using
 > background Workflow orchestration — parallel research and adversarial-review

@@ -61,9 +61,16 @@
     fireTimeServer: '18:59:59.0',
     searchEveryMs: 350,            // re-run the search until tiles appear
     maxSearchMs: 180000,           // give up this long after fire if nothing secured
-    modalWaitMs: 3500,             // tile click -> booking window timeout
+    // Tile click -> booking window. This is effectively a timeout on the HOLD
+    // round-trip (the modal only renders after the hold POST returns), so it
+    // must comfortably exceed a LAGGY hold at the 7:00 rush (can be 5s+).
+    // Generous on purpose and SAFE: it idle-waits on our OWN submitted click -
+    // it never delays the search loop / MutationObserver / turbo / fire, and a
+    // genuine "taken" error still short-circuits it instantly. Too-short here
+    // makes the bot abandon (and leak the hold on) a slot it actually won.
+    modalWaitMs: 10000,
     preBookDelayMs: 150,           // let the modal settle before Book
-    outcomeWaitMs: 12000,          // Book click -> confirmation/error/code timeout
+    outcomeWaitMs: 25000,          // Book -> confirmation/error/code; generous so a slow reserve isn't misread as "OUTCOME UNKNOWN"
     resyncBeforeFireMs: 45000,     // re-sync the server clock at T-45s
 
     // --- what to book ---

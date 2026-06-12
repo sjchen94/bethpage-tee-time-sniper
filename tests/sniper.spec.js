@@ -104,6 +104,20 @@ test('API turbo: detects the release via direct polling and still books', async 
   expect(await botLog(page)).toContain('API: times released');
 });
 
+test('laggy release: a 5s hold round-trip still books (modal-wait tolerates lag)', async ({ page, request }) => {
+  // The hold POST takes 5s (thundering-herd lag). With the old 3.5s modal-wait
+  // the bot would abandon a slot it actually won; the shipped 10s wait rides
+  // it out and books.
+  const { times } = await configure(request, { releaseInMs: 1500, holdDelayMs: 5000 });
+  await inject(page, { modalWaitMs: 10000, outcomeWaitMs: 8000 }); // real default modal-wait
+  await armAndWaitFor(page, { fire: fmtFire(Date.now() + 1000), earliest: '6:00am', latest: '6:00pm', timeout: 30000 });
+
+  const st = await getState(request);
+  expect(st.booked).toHaveLength(1);
+  expect(st.booked[0].label).toBe(times[0]);
+  expect(st.hold).toBeNull(); // booked cleanly, no leaked hold
+});
+
 test('falls back to the next tile when the first is sniped', async ({ page, request }) => {
   const { times } = await configure(request, { releaseInMs: 2000, snipeFirst: 1 });
   await inject(page);
