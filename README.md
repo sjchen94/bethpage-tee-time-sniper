@@ -121,10 +121,13 @@ quieter courses the default is plenty.
 
 ## Knobs (`TTB.config.<x> = ...` in the console)
 
-- `apiTurbo` (or the `turbo` checkbox) · `apiPollEveryMs` (150)
+- `apiTurbo` (or the `turbo` checkbox) · `apiPollEveryMs` (50)
 
-- `fireTimeServer` — default `18:59:59.80` (server clock). Early firing is
-  safe: the first attempts return empty, then the 7:00:00 attempt hits.
+- `fireTimeServer` — default `18:59:59.0` (server clock), ~1s before release.
+  That's enough margin to absorb clock-sync uncertainty (~±90ms) and be
+  already-polling when 7:00 flips, without turbo spraying ~100 empty
+  pre-release requests. Firing much earlier just adds bot-like request volume,
+  not speed; the search-until-found loop means firing a hair late is safe too.
 - `searchEveryMs` (350) · `modalWaitMs` · `outcomeWaitMs` · `maxSearchMs`
 - `earliest` / `latest` / `desiredPlayers` / `minPlayers` / `preference`
 - All selectors live in `CONFIG`; the dry-run log tells you which to update if

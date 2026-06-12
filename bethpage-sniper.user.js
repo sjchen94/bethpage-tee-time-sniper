@@ -54,7 +54,11 @@
    * ------------------------------------------------------------------ */
   const CONFIG = {
     // --- timing ---
-    fireTimeServer: '18:59:59.80', // [UI] fire on the SERVER clock, 24h HH:MM:SS.mmm
+    // [UI] fire on the SERVER clock, 24h HH:MM:SS.mmm. Default is ~1s before
+    // the 7:00:00 PM release: enough margin to absorb clock-sync uncertainty
+    // (~±90ms) and be already-polling when it flips, without turbo spraying a
+    // lot of empty pre-release requests. Don't push it earlier than needed.
+    fireTimeServer: '18:59:59.0',
     searchEveryMs: 350,            // re-run the search until tiles appear
     maxSearchMs: 180000,           // give up this long after fire if nothing secured
     modalWaitMs: 3500,             // tile click -> booking window timeout
