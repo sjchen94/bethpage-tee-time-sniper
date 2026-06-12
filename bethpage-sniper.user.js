@@ -71,6 +71,17 @@
     maxFailsPerSlot: 2,            // give up on a slot after this many errors
     dryRun: false,                 // [UI] stop one click short of booking
 
+    // --- API turbo (optional, advanced) ---
+    // Also poll ForeUp's times endpoint DIRECTLY for the fastest possible
+    // release detection, reusing your logged-in session (no stored creds, no
+    // api_key tricks). The hold is still placed through the real UI tile, so
+    // you get the same emailed-code handoff and it looks like a normal booking.
+    // Trade-off: more requests during the brief search window - keep it polite,
+    // and know that aggressive direct polling is the pattern bot-detection
+    // watches for. Off by default; flip on in the console or the UI checkbox.
+    apiTurbo: false,
+    apiPollEveryMs: 150,           // direct times-endpoint poll interval when apiTurbo is on
+
     // --- selectors (verified against the LIVE Bethpage/ForeUp page, Jun 2026) ---
     // Clicking the "18 holes" filter makes ForeUp re-query times. NOTE: on
     // Bethpage the default-active holes filter is "Both" (data-value="all"),
@@ -151,6 +162,9 @@
     timers: new Set(),
     fireTimerId: null,
     searchInterval: null,
+    apiInterval: null,
+    timesUrl: null,         // the page's real /booking/times URL, sniffed from fetch/XHR
+    apiHit: false,
     uiInterval: null,
     attemptErr: null,
     preBookErr: null,
@@ -262,6 +276,77 @@
 
   function serverNow() { return Date.now() + S.clockOffsetMs; }
   function sinceFire() { return ((Date.now() - S.firedAt) / 1000).toFixed(2) + 's'; }
+
+  // "06:51", "6:51am", "2026-06-16 06:51:00" -> minutes since midnight, or null
+  function timeStrToMins(s) {
+    const ap = parseAmPm(s);
+    if (ap != null) return ap;
+    const m = String(s || '').match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+    if (!m) return null;
+    return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  }
+
+  /* ------------------------------------------------------------------
+   * 4b. API TURBO - sniff the page's real times URL, then poll it directly
+   *     for the fastest possible release detection (reuses the session).
+   * ------------------------------------------------------------------ */
+  function installApiSniffer() {
+    const re = /\/booking\/times\b/i;
+    try {
+      const of = window.fetch;
+      if (of && !of.__ttb) {
+        window.fetch = function (input) {
+          try { const u = typeof input === 'string' ? input : input && input.url; if (u && re.test(u)) S.timesUrl = u; } catch (e) { /* ignore */ }
+          return of.apply(this, arguments);
+        };
+        window.fetch.__ttb = true;
+      }
+    } catch (e) { /* ignore */ }
+    try {
+      const oo = XMLHttpRequest.prototype.open;
+      if (oo && !oo.__ttb) {
+        XMLHttpRequest.prototype.open = function (method, url) {
+          try { if (url && re.test(url)) S.timesUrl = url; } catch (e) { /* ignore */ }
+          return oo.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.open.__ttb = true;
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // Does the times JSON contain at least one slot inside our window?
+  function apiHasTimes(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { return /\d{1,2}:\d{2}/.test(text); }
+    const arr = Array.isArray(data) ? data : (data.times || data.data || data.tee_times || []);
+    if (!Array.isArray(arr) || !arr.length) return false;
+    const lo = parseAmPm(CONFIG.earliest), hi = parseAmPm(CONFIG.latest);
+    if (lo == null || hi == null) return true;
+    for (const it of arr) {
+      const mins = timeStrToMins((it && (it.time || it.label || it.start_time || it.teetime)) + '');
+      if (mins == null) return true; // unparseable but non-empty -> trust it
+      if (mins >= lo && mins <= hi) return true;
+    }
+    return false;
+  }
+
+  function startApiPoll() {
+    if (!CONFIG.apiTurbo) return;
+    if (!S.timesUrl) warnOnce('API turbo is ON but no times URL captured yet - the first search click will trigger one.');
+    S.apiInterval = setInterval(function () {
+      if (S.state !== 'searching' || !S.timesUrl) return;
+      fetch(S.timesUrl, { credentials: 'include', cache: 'no-store' })
+        .then(function (r) { return r.text(); })
+        .then(function (txt) {
+          if (S.state !== 'searching') return;
+          if (apiHasTimes(txt)) {
+            if (!S.apiHit) { S.apiHit = true; log('API: times released - forcing render + grab (+' + sinceFire() + ')', 'big'); }
+            searchTick(); // render via the refresh click, then grab
+          }
+        })
+        .catch(function () { /* transient - the next poll retries */ });
+    }, CONFIG.apiPollEveryMs);
+  }
 
   /* ------------------------------------------------------------------
    * 5. LOGGING (on-screen + console + localStorage postmortem)
@@ -416,6 +501,7 @@
 
   function stopLoops() {
     if (S.searchInterval) { clearInterval(S.searchInterval); S.searchInterval = null; }
+    if (S.apiInterval) { clearInterval(S.apiInterval); S.apiInterval = null; }
     tileObserver.disconnect();
     clearTimers();
   }
@@ -438,11 +524,13 @@
     setState('searching');
     S.firedAt = Date.now();
     S.searchClicks = 0;
-    log('FIRE - server clock ' + fmtClock(serverNow()), 'big');
+    S.apiHit = false;
+    log('FIRE - server clock ' + fmtClock(serverNow()) + (CONFIG.apiTurbo ? ' [API turbo ON]' : ''), 'big');
     if (document.hidden) log('THIS TAB IS IN THE BACKGROUND - timers are throttled. CLICK INTO THIS TAB NOW.', 'err');
     try { tileObserver.observe(document.body, { childList: true, subtree: true }); } catch (e) { /* ignore */ }
     searchTick();
     S.searchInterval = setInterval(searchTick, CONFIG.searchEveryMs);
+    startApiPoll();
     later(function backstop() {
       if (S.state === 'searching' || S.state === 'attempting') {
         stopBot('Nothing secured ' + Math.round(CONFIG.maxSearchMs / 1000) + 's after fire - stopped. Take over by hand.');
@@ -845,6 +933,7 @@
     const players = el('select', { background: '#0c0d10', color: '#e8e8e8', border: '1px solid #444', borderRadius: '4px', font: 'inherit' }, { id: 'ttb-players' });
     for (let i = 1; i <= 4; i++) players.appendChild(el('option', null, { value: String(i), textContent: String(i), selected: i === CONFIG.desiredPlayers }));
     const dry = el('input', null, { id: 'ttb-dry', type: 'checkbox', checked: CONFIG.dryRun });
+    const turbo = el('input', null, { id: 'ttb-turbo', type: 'checkbox', checked: CONFIG.apiTurbo });
 
     const syncBtn = button('ttb-sync', 'SYNC', '#555');
     const testBtn = button('ttb-test', 'TEST (dry)', '#8a6d00');
@@ -858,6 +947,7 @@
     row.appendChild(field('to', latest));
     row.appendChild(field('players', players));
     row.appendChild(field('dry run', dry));
+    row.appendChild(field('turbo', turbo));
     row.appendChild(syncBtn); row.appendChild(testBtn); row.appendChild(armBtn); row.appendChild(stopBtn); row.appendChild(status);
 
     const row2 = el('div', { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' });
@@ -880,12 +970,13 @@
   }
 
   function readUi() {
-    const f = $('#ttb-fire'), e = $('#ttb-earliest'), l = $('#ttb-latest'), p = $('#ttb-players'), d = $('#ttb-dry');
+    const f = $('#ttb-fire'), e = $('#ttb-earliest'), l = $('#ttb-latest'), p = $('#ttb-players'), d = $('#ttb-dry'), t = $('#ttb-turbo');
     if (f) CONFIG.fireTimeServer = f.value.trim();
     if (e) CONFIG.earliest = e.value.trim();
     if (l) CONFIG.latest = l.value.trim();
     if (p) CONFIG.desiredPlayers = parseInt(p.value, 10) || 4;
     if (d) CONFIG.dryRun = d.checked;
+    if (t) CONFIG.apiTurbo = t.checked;
   }
 
   function setState(s) {
@@ -988,6 +1079,7 @@
     try { if (localStorage.getItem('ttb-last-log')) log('Previous run log saved - view: JSON.parse(localStorage.getItem("ttb-last-log")).join("\\n")'); } catch (e) { /* ignore */ }
   }
 
+  installApiSniffer();
   buildUi();
   log('Bethpage Tee-Time Sniper v2.1 loaded. Set times, then ARM (or TEST for a dry run).', 'big');
   selfCheck();

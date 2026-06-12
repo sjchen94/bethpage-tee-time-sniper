@@ -91,6 +91,18 @@ test('Bethpage Black realism: holds the slot within a 500ms window of release', 
   expect(st.booked[0].at - st.releaseAtMs).toBeLessThan(800); // hold(<500) + reserve roundtrip
 });
 
+test('API turbo: detects the release via direct polling and still books', async ({ page, request }) => {
+  const { times } = await configure(request, { releaseInMs: 6000 });
+  await inject(page, { apiPollEveryMs: 120 });
+  await page.check('#ttb-turbo'); // turbo is the UI source of truth on ARM
+  await armAndWaitFor(page, { fire: fmtFire(Date.now() + 2000), earliest: '6:00am', latest: '6:00pm' });
+
+  const st = await getState(request);
+  expect(st.booked).toHaveLength(1);
+  expect(st.booked[0].label).toBe(times[0]);
+  expect(await botLog(page)).toContain('API: times released');
+});
+
 test('falls back to the next tile when the first is sniped', async ({ page, request }) => {
   const { times } = await configure(request, { releaseInMs: 2000, snipeFirst: 1 });
   await inject(page);

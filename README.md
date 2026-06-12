@@ -86,7 +86,42 @@ Plus the things that didn't exist in 2025:
 
 ---
 
+## Two modes: click-sim (default) and API turbo
+
+The bot ships with both approaches, because they win different things:
+
+- **Click-sim (default).** Refreshes and clicks the real visible tile, exactly
+  like a fast human. Safest — it looks like normal use and is the recommended
+  mode for most courses.
+- **API turbo** (tick the **`turbo`** box, or `TTB.config.apiTurbo = true`).
+  *Also* polls ForeUp's `/api/booking/times` endpoint **directly** for the
+  fastest possible detection of the 7:00 release, reusing your logged-in
+  session (no stored credentials, no `api_key` tricks — `fetch(...,
+  {credentials:'include'})` rides your cookie). The instant the API shows times
+  in your window, it forces the render and grabs the tile.
+
+**Why turbo still places the hold through the UI, not the API:** the booking
+*write* can't skip the 2FA either way — the emailed-code field
+(`#reservation_confirmation_uid`) is in the modal and needs *you*. So the only
+thing "going direct" wins is **detecting the release a few ms sooner**, which
+turbo does. Doing the *hold* purely over the API (`pending_reservation`) would
+shave a bit more, but it's the exact pattern ForeUp's bot-detection and the NY
+crackdown watch for — and it's your personal account at risk. Turbo gets you
+the API's detection speed while keeping the booking on the legitimate UI path.
+For Bethpage Black (which clears in milliseconds) turbo is worth turning on; on
+quieter courses the default is plenty.
+
+> The thing that actually reserves your slot is the **hold** that fires when the
+> tile is clicked — it protects the time *while you type the emailed code*. So
+> you don't lose Black to the 2FA; you lose it if your hold lands a few ms late.
+> Both modes fire that hold the instant a tile renders (via a `MutationObserver`,
+> not a poll tick); turbo just learns *when* to render a hair sooner. An e2e test
+> simulates a slot that's grabbable for only 500 ms after release and proves the
+> hold lands inside it.
+
 ## Knobs (`TTB.config.<x> = ...` in the console)
+
+- `apiTurbo` (or the `turbo` checkbox) · `apiPollEveryMs` (150)
 
 - `fireTimeServer` — default `18:59:59.80` (server clock). Early firing is
   safe: the first attempts return empty, then the 7:00:00 attempt hits.
@@ -105,14 +140,21 @@ npm test           # 16 e2e scenarios against the mock ForeUp site
 npm run mock       # poke the mock yourself at http://127.0.0.1:4399
 ```
 
-**Scenarios covered:** release-after-fire (empty searches first, books <2.5 s
-after release) · benign "error" text in the modal does **not** abort a good
-booking · snipe fallback · Book-failure with proper hold release (no
-double-hold lockout) · expired-hold recovery · CAPTCHA gate → human handoff ·
-emailed-code gate → human handoff · 90 s server-clock skew · earliest/latest
-window · dry run · TEST-doesn't-stick regression guard · ambiguous-outcome
-halt (double-booking guard) · STOP can't be resurrected by a late async tick ·
-panic-mode late arming · spaced time labels ("6:00 AM") · 250 ms latency.
+**Scenarios covered (18):** release-after-fire (empty searches first, books
+<2.5 s after release) · benign "error" text in the modal does **not** abort a
+good booking · **Bethpage Black realism: hold lands inside a 500 ms window** ·
+**API turbo detection** · snipe fallback · Book-failure with proper hold release
+(no double-hold lockout) · expired-hold recovery · CAPTCHA gate → human handoff ·
+**emailed-code field → human handoff (never clicks Book)** · 90 s server-clock
+skew · earliest/latest window · dry run · TEST-doesn't-stick regression guard ·
+ambiguous-outcome halt (double-booking guard) · STOP can't be resurrected by a
+late async tick · panic-mode late arming · spaced time labels ("6:00 AM") ·
+250 ms latency.
+
+The mock's page markup mirrors the **live Bethpage page** (verified Jun 2026):
+`.js-summary`/`.time-summary` tiles, `#booking-error`, `.players` buttons, the
+`#reservation_confirmation_uid` code field, and the `js-book-button` footer — so
+these tests exercise the real production selectors.
 
 ---
 
