@@ -80,7 +80,11 @@
     // and know that aggressive direct polling is the pattern bot-detection
     // watches for. Off by default; flip on in the console or the UI checkbox.
     apiTurbo: false,
-    apiPollEveryMs: 150,           // direct times-endpoint poll interval when apiTurbo is on
+    // Direct times-endpoint poll interval when apiTurbo is on. Floor is your
+    // network round-trip time (the bot logs "rtt N ms" after syncing - you
+    // can't detect faster than one round trip). 50ms is near that floor for a
+    // NY->Oregon hop; going lower just adds request volume, not speed.
+    apiPollEveryMs: 50,
 
     // --- selectors (verified against the LIVE Bethpage/ForeUp page, Jun 2026) ---
     // Clicking the "18 holes" filter makes ForeUp re-query times. NOTE: on
