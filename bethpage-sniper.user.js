@@ -966,9 +966,20 @@
     const offset = el('span', { color: '#8ab4ff' }, { id: 'ttb-offset', textContent: 'clock: local (not synced)' });
     row2.appendChild(barWrap); row2.appendChild(countdown); row2.appendChild(offset);
 
-    const logBox = el('div', { marginTop: '4px', height: '110px', overflowY: 'auto', background: '#0c0d10', border: '1px solid #333', borderRadius: '4px', padding: '4px 6px', whiteSpace: 'pre-wrap' }, { id: 'ttb-log' });
+    const help = el('div', {
+      marginTop: '4px', padding: '5px 9px', background: '#1f2733', border: '1px solid #2a6fdb',
+      borderRadius: '4px', color: '#cfe3ff', fontSize: '11px', lineHeight: '1.55',
+    });
+    help.innerHTML =
+      '<b style="color:#5fff8f">How to use &mdash; just 4 steps:</b><br>' +
+      '<b>1.</b> Set <b>from</b>/<b>to</b> + <b>players</b>. Leave <b>fire@server</b> as-is. <b>dry&nbsp;run&nbsp;OFF</b> (tick <b>turbo</b> only for Black). &nbsp; ' +
+      '<b>2.</b> Press <b>ARM</b> &mdash; it fires at 7:00 by itself. &nbsp; ' +
+      '<b>3.</b> Keep this tab in front and <b>wait</b>.<br>' +
+      '<b>4.</b> When the <b style="color:#c77dff">purple banner</b> appears &rarr; check your email, type the <b>6-digit code</b>, click <b>&ldquo;Book Time&rdquo;</b>.';
 
-    root.appendChild(row); root.appendChild(row2); root.appendChild(logBox);
+    const logBox = el('div', { marginTop: '4px', height: '104px', overflowY: 'auto', background: '#0c0d10', border: '1px solid #333', borderRadius: '4px', padding: '4px 6px', whiteSpace: 'pre-wrap' }, { id: 'ttb-log' });
+
+    root.appendChild(row); root.appendChild(row2); root.appendChild(help); root.appendChild(logBox);
     document.body.appendChild(root);
 
     syncBtn.addEventListener('click', function () { syncClock(); });
