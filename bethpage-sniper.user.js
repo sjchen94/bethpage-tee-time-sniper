@@ -74,6 +74,7 @@
     resyncBeforeFireMs: 45000,     // re-sync the server clock at T-45s
 
     // --- what to book ---
+    targetDate: '',                 // [UI] date to auto-select at fire e.g. "6/19" (month/day visible in the calendar)
     earliest: '5:00am',            // [UI] accept tee times from...
     latest: '8:00pm',              // [UI] ...to (inclusive)
     idealTime: '12:00pm',          // [UI] aim for this time - grab the OPEN slot closest to it
@@ -544,6 +545,27 @@
    * ------------------------------------------------------------------ */
   const tileObserver = new MutationObserver(function () { maybeAttack(); });
 
+  function selectTargetDate() {
+    if (!CONFIG.targetDate) return;
+    const m = String(CONFIG.targetDate).match(/(\d{1,2})\/(\d{1,2})/);
+    if (!m) { log('targetDate "' + CONFIG.targetDate + '" not in M/D format - skipping date selection', 'warn'); return; }
+    const targetDay = parseInt(m[2], 10);
+    const cells = document.querySelectorAll(
+      '.datepicker-days td.day:not(.old):not(.new), .datepicker td.day:not(.old):not(.new)'
+    );
+    for (const cell of cells) {
+      if (parseInt(cell.textContent.trim(), 10) === targetDay) {
+        const wasDisabled = cell.classList.contains('disabled');
+        cell.classList.remove('disabled');
+        realClick(cell);
+        if (wasDisabled) log('Force-enabled + clicked target date ' + CONFIG.targetDate + ' (was disabled)', 'warn');
+        else log('Clicked target date ' + CONFIG.targetDate);
+        return;
+      }
+    }
+    log('Target date ' + CONFIG.targetDate + ' not found in datepicker - is the calendar on the right month?', 'warn');
+  }
+
   function fire() {
     if (S.state !== 'armed') return;
     setState('searching');
@@ -552,6 +574,7 @@
     S.apiHit = false;
     log('FIRE - server clock ' + fmtClock(serverNow()) + (CONFIG.apiTurbo ? ' [API turbo ON]' : ''), 'big');
     if (document.hidden) log('THIS TAB IS IN THE BACKGROUND - timers are throttled. CLICK INTO THIS TAB NOW.', 'err');
+    selectTargetDate();
     try { tileObserver.observe(document.body, { childList: true, subtree: true }); } catch (e) { /* ignore */ }
     searchTick();
     // Adaptive interval: never re-click the refresh faster than a round-trip,
@@ -965,6 +988,7 @@
     }
 
     const fire = textInput('ttb-fire', CONFIG.fireTimeServer, '105px');
+    const dateInput = textInput('ttb-date', CONFIG.targetDate, '55px');
     const earliest = textInput('ttb-earliest', CONFIG.earliest, '70px');
     const latest = textInput('ttb-latest', CONFIG.latest, '70px');
     const ideal = textInput('ttb-ideal', CONFIG.idealTime, '70px');
